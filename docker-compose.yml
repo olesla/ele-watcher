@@ -1,0 +1,67 @@
+version: '3.7'
+
+networks:
+  ele_watcher:
+    driver: bridge
+
+services:
+  app:
+    build: .
+    platform: linux/amd64
+    container_name: ele_watcher_app
+    restart: unless-stopped
+    ports:
+      - 3020:3020
+    depends_on:
+      - db
+    environment:
+      DB_HOST: "db"
+      DB_USER: "root"
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      DB_PORT: 3306
+      WAIT_MINUTES: ${WAIT_MINUTES}
+      DISCORD_URL: ${DISCORD_URL}
+      DISCORD_USERNAME: ${DISCORD_USERNAME}
+    networks:
+      - ele_watcher
+
+  db:
+    image: mysql
+    container_name: ele_watcher_db
+    restart: unless-stopped
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      SERVICE_TAGS: dev
+      SERVICE_NAME: mysql
+    volumes:
+      - dbdata:/var/lib/mysql
+    networks:
+      - ele_watcher
+
+  browserless:
+    image: browserless/chrome:latest
+    environment:
+      - DEBUG=browserless:*
+      - MAX_CONCURRENT_SESSIONS=10
+      - CONNECTION_TIMEOUT=60000
+      - MAX_QUEUE_LENGTH=20
+      - PREBOOT_CHROME=true
+      - DEMO_MODE=false
+      - HOST=0.0.0.0
+      - ENABLE_DEBUGGER=false
+      - TOKEN=${BROWSERLESS_TOKEN}
+      - PORT=3000
+      - WORKSPACE_DELETE_EXPIRED=true
+    container_name: ele_watcher_browserless
+    restart: always
+    networks:
+      - ele_watcher
+
+volumes:
+  dbdata:
+    driver: local
